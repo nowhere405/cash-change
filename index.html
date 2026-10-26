@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ทอนเงิน">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>ทอนเงิน</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#16181d;--mute:#6b7280;--line:#e3e5ea;--main:#0f766e;--mainText:#fff;--bad:#c62828;--badBg:#fdecea;--ok:#2e7d32;--okBg:#e8f5e9;--warn:#b26a00;--warnBg:#fff4e0}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1013;--card:#1a1d23;--text:#f1f2f4;--mute:#9aa1ad;--line:#2b2f37;--main:#2bb5a8;--mainText:#06201d;--bad:#ff8a80;--badBg:#3a1d1b;--ok:#81c784;--okBg:#1c3320;--warn:#ffb74d;--warnBg:#3a2c12}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Sarabun","Noto Sans Thai",system-ui,sans-serif;font-size:17px}
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+main{max-width:560px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 16px 16px}
+h1{font-size:22px;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.lbl{font-size:14px;color:var(--mute);margin-bottom:6px}
+input[type=number]{width:100%;font-size:32px;font-weight:700;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);text-align:right}
+input:focus{outline:none;border-color:var(--main)}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.sheet{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;background:var(--card);border-top:3px solid var(--main);border-radius:18px 18px 0 0;padding:12px 16px;box-shadow:0 -6px 20px rgba(0,0,0,.28);z-index:5}
+.sheet .box{margin-bottom:8px}.sheet .btn{padding:12px;font-size:18px}
+.recv{font-size:26px;font-weight:800;margin-bottom:2px}
+.chg{font-size:15px;color:var(--mute);font-weight:600}.chg b{font-size:30px;color:var(--text);margin-left:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0 10px}
+/* live match status per row */
+.row.ok .name small{color:var(--ok);font-weight:700}
+.row.bad .name small{color:var(--bad);font-weight:700}
+.row.ok input{border-color:var(--ok)}
+.row.bad input{border-color:var(--bad)}
+details.tx{border-top:1px solid var(--line);padding:8px 0}
+details.tx summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;font-weight:600}
+details.tx summary::-webkit-details-marker{display:none}
+details.tx summary small{display:block;color:var(--mute);font-weight:400;font-size:13px}
+details.tx summary::after{content:'▾';color:var(--mute);margin-left:8px}
+details.tx[open] summary::after{content:'▴'}
+details.tx .lbl{margin-top:10px}
+.bal{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.balc{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:17px}
+.balc.chg2{border-color:var(--main)}
+.balc small{font-size:12px;font-weight:700}
+body.padopen main{padding-bottom:320px}
+input[readonly]{cursor:pointer;caret-color:transparent}
+input.active{border-color:var(--main)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--main) 35%,transparent)}
+.pad{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--card);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:10px 10px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:30;box-shadow:0 -6px 20px rgba(0,0,0,.3)}
+.key{height:54px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-size:26px;font-weight:700;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.key:active{filter:brightness(1.4)}
+.key.go{background:var(--main);color:var(--mainText);font-size:17px}
+body.nonav .sheet{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+.chip2{display:flex;align-items:center;gap:4px;font-weight:800;font-size:22px}
+.bn,.coin{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;color:#fff;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.45);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.35);font-size:calc(var(--w)*.27);line-height:1}
+.bn{width:var(--w);height:calc(var(--w)*.5);border-radius:6px;background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 60%,#fff));border:2px solid rgba(255,255,255,.55);padding-left:calc(var(--w)*.2)}
+.bn::before{content:'';position:absolute;left:7%;top:50%;width:26%;aspect-ratio:1;transform:translateY(-50%);border-radius:50%;border:2px solid rgba(255,255,255,.5)}
+.bn::after{content:'';position:absolute;right:6%;top:12%;bottom:12%;width:5%;border-radius:3px;background:rgba(255,255,255,.3)}
+.coin{width:var(--w);height:var(--w);border-radius:50%;background:radial-gradient(circle at 30% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c));border:3px solid rgba(255,255,255,.55);font-size:calc(var(--w)*.42)}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.btn{width:100%;padding:16px;border-radius:14px;background:var(--main);color:var(--mainText);font-size:19px;font-weight:700}
+.btn:disabled{opacity:.35}
+.btn.ghost{background:transparent;border:2px solid var(--line);color:var(--text);font-weight:600}
+.btn.danger{background:var(--badBg);color:var(--bad)}
+.seg{display:flex;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:12px}
+.seg button{flex:1;padding:10px;border-radius:9px;background:transparent;font-weight:600;color:var(--mute)}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.quick button{flex:1 1 28%;padding:12px 4px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-weight:700;font-size:17px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.chip{width:12px;align-self:stretch;border-radius:4px;min-height:34px}
+.name{flex:1;font-weight:600}
+.name small{display:block;color:var(--mute);font-weight:400;font-size:13px}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:42px;height:42px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-size:24px;font-weight:700;line-height:1}
+.step input{width:56px;height:42px;font-size:19px;font-weight:700;text-align:center;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text)}
+.total{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;padding-top:10px;font-size:19px}
+.big{font-size:40px;font-weight:800}
+.box{border-radius:12px;padding:8px 12px;margin-bottom:8px;font-weight:600;font-size:15px}
+.box.bad{background:var(--badBg);color:var(--bad)}
+.box.ok{background:var(--okBg);color:var(--ok)}
+.box.warn{background:var(--warnBg);color:var(--warn)}
+.give{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;margin-bottom:8px;background:var(--bg);border-left:10px solid}
+.give b{font-size:30px;min-width:3.2ch;text-align:right}
+.give span{font-size:19px;font-weight:600;flex:1}
+.give em{font-style:normal;color:var(--mute)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:10px 2px 12px;background:none;color:var(--mute);font-size:13px;font-weight:600}
+nav button i{display:block;font-style:normal;font-size:22px;margin-bottom:2px}
+nav button.on{color:var(--main)}
+.hist{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.hist:last-child{border-bottom:0}
+.hist small{color:var(--mute);display:block}
+.pos{color:var(--ok);font-weight:700}.neg{color:var(--bad);font-weight:700}
+.gap{height:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tap{position:relative;display:flex;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:8px 0;touch-action:manipulation}
+.tap:active{filter:brightness(.8)}
+.tap i{position:absolute;top:4px;right:6px;font-style:normal;font-size:14px;background:rgba(0,0,0,.45);border-radius:10px;padding:0 6px;min-width:0}
+.tap i:empty{display:none}
+.btn.ghost{padding:12px;font-size:16px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script>
+const D=[1000,500,100,50,20,10,5,2,1];
+const COLOR={1000:'#7d838d',500:'#7b4fa0',100:'#d94a4a',50:'#3d7fd1',20:'#3fa356',10:'#c9962b',5:'#a8742f',2:'#d4b24c',1:'#b9a37a'};
+const NOTE=d=>d>=20;
+const nm=d=>(NOTE(d)?'แบงค์ ':'เหรียญ ')+d.toLocaleString('th-TH');
+const zero=()=>Object.fromEntries(D.map(d=>[d,0]));
+const sum=o=>D.reduce((s,d)=>s+d*(o[d]||0),0);
+const baht=n=>'฿'+Number(n).toLocaleString('th-TH');
+const today=()=>{const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
+const timeStr=ts=>new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+const dateStr=s=>{const[y,m,d]=s.split('-');return new Date(y,m-1,d).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'})};
+
+/* ---------- state ---------- */
+const init=()=>({drawer:zero(),start:null,log:[],days:[],checks:[]});
+let S;try{S=JSON.parse(localStorage.getItem('cashapp'))||init()}catch(e){S=init()}
+S.checks=S.checks||[];
+const save=()=>{try{localStorage.setItem('cashapp',JSON.stringify(S))}catch(e){}};
+let tab='sale';
+const sale={due:'',recv:zero(),hist:[],focus:false};
+let morning=zero(),closing=zero(),checking=zero();
+
+/* ---------- change calculation (bounded, fewest pieces) ---------- */
+function makeChange(amt,avail){
+  if(amt===0)return zero();
+  const n=D.length,INF=1e9;
+  let prev=new Array(amt+1).fill(INF);prev[0]=0;const ch=[];
+  for(let i=0;i<n;i++){
+    const d=D[i],mx=Math.min(avail[d]||0,Math.floor(amt/d));
+    const nd=new Array(amt+1).fill(INF),c=new Array(amt+1).fill(0);
+    for(let a=0;a<=amt;a++)for(let k=0;k<=mx&&k*d<=a;k++){const v=prev[a-k*d]+k;if(v<nd[a]){nd[a]=v;c[a]=k}}
+    ch.push(c);prev=nd;
+  }
+  if(prev[amt]>=INF)return null;
+  const r=zero();let a=amt;
+  for(let i=n-1;i>=0;i--){const k=ch[i][a];r[D[i]]=k;a-=k*D[i]}
+  return r;
+}
+function greedy(amt){const r=zero();for(const d of D){r[d]=Math.floor(amt/d);amt-=r[d]*d}return r}
+
+/* ---------- ui helpers ---------- */
+function h(tag,attrs,...kids){
+  const e=document.createElement(tag);
+  for(const k in(attrs||{})){
+    if(k==='on')for(const ev in attrs.on)e.addEventListener(ev,attrs.on[ev]);
+    else if(k==='class')e.className=attrs[k];
+    else if(k==='html')e.innerHTML=attrs[k];
+    else e.setAttribute(k,attrs[k]);
+  }
+  for(const c of kids.flat())if(c!=null&&c!==false)e.append(c.nodeType?c:document.createTextNode(c));
+  return e;
+}
+/* drawn banknote / coin picture */
+const vis=(d,w)=>h('span',{class:NOTE(d)?'bn':'coin',style:'--c:'+COLOR[d]+';--w:'+w+'px'},String(NOTE(d)?d.toLocaleString('en-US'):d));
+/* counter list: obj is mutated, onchange called after any change */
+function counter(obj,onchange,opts={}){
+  const wrap=h('div',{class:'card'});
+  const totalEl=h('b',{});
+  const upd=()=>{totalEl.textContent=baht(sum(obj))};
+  const inputs={},sms={},touched={};
+  const exp=opts.expected;
+  for(const d of D)touched[d]=(obj[d]||0)>0;
+  const stat=d=>{
+    if(!exp)return;
+    const e=exp[d]||0,sm=sms[d],row=sm.closest('.row');
+    row.classList.remove('ok','bad');
+    if(!touched[d]&&e!==0){sm.textContent='ควรมี '+e;return}
+    const df=(obj[d]||0)-e;
+    if(df===0){sm.textContent='✓ ตรง · ควรมี '+e;row.classList.add('ok')}
+    else{sm.textContent=(df<0?'ขาด ':'เกิน ')+Math.abs(df)+' · ควรมี '+e;row.classList.add('bad')}
+  };
+  wrap.pending=()=>exp?D.filter(d=>!touched[d]&&(exp[d]||0)!==0):[];
+  for(const d of D){
+    const inp=h('input',{type:'number',inputmode:'none',readonly:'',min:0,value:obj[d]||0});
+    inputs[d]=inp;
+    const set=v=>{v=Math.max(0,Math.floor(Number(v)||0));obj[d]=v;inp.value=v;touched[d]=true;stat(d);upd();onchange&&onchange()};
+    inp.addEventListener('change',()=>set(inp.value));
+    inp.addEventListener('click',()=>openPad(inp));
+    wrap.append(h('div',{class:'row'},
+      h('div',{style:'width:60px;display:flex;justify-content:center'},vis(d,NOTE(d)?56:34)),
+      h('div',{class:'name'},nm(d),exp?(sms[d]=h('small',{})):opts.hint?h('small',{},opts.hint(d)):null),
+      h('div',{class:'step'},
+        h('button',{on:{click:()=>set((obj[d]||0)-1)}},'−'),inp,
+        h('button',{on:{click:()=>set((obj[d]||0)+1)}},'+'))));
+  }
+  for(const d of D)stat(d);
+  wrap.append(h('div',{class:'total'},h('span',{},'รวม'),totalEl));
+  upd();
+  wrap.refresh=()=>{for(const d of D){inputs[d].value=obj[d]||0;stat(d)}upd()};
+  return wrap;
+}
+
+/* ---------- on-screen number pad ---------- */
+let padEl=null,padInp=null,padBuf='';
+function buildPad(){
+  const el=h('div',{class:'pad'});
+  ['1','2','3','4','5','6','7','8','9','del','0','next'].forEach(k=>el.append(h('button',{class:'key'+(k==='next'?' go':''),on:{click:()=>padKey(k)}},k==='del'?'⌫':k==='next'?'ถัดไป ✓':k)));
+  return el;
+}
+function openPad(inp){
+  if(!padEl){padEl=buildPad();document.body.append(padEl)}
+  if(padInp)padInp.classList.remove('active');
+  padInp=inp;inp.classList.add('active');padBuf='';
+  padEl.style.display='';document.body.classList.add('padopen');
+  setTimeout(()=>inp.scrollIntoView({block:'center',behavior:'smooth'}),30);
+}
+function closePad(){
+  if(padInp)padInp.classList.remove('active');
+  padInp=null;if(padEl)padEl.style.display='none';document.body.classList.remove('padopen');
+}
+function padKey(k){
+  if(!padInp)return;
+  if(k==='next'){
+    const all=[...document.querySelectorAll('#app input[readonly]')],nx=all[all.indexOf(padInp)+1];
+    nx?openPad(nx):closePad();return;
+  }
+  if(k==='del')padBuf=padBuf.slice(0,-1);
+  else if(padBuf.length<6)padBuf=(padBuf+k).replace(/^0+(?=d)/,'');
+  padInp.value=padBuf;
+  padInp.dispatchEvent(new Event('input'));padInp.dispatchEvent(new Event('change'));
+}
+
+/* ---------- screens ---------- */
+function screenSale(){
+  const root=h('div',{});
+  const result=h('div',{class:'sheet',style:'display:none'});
+  const due=h('input',{type:'number',inputmode:'none',readonly:'',min:0,placeholder:'0',value:sale.due});
+  due.addEventListener('input',()=>{sale.due=due.value;calc()});
+  due.addEventListener('click',()=>openPad(due));
+  const recvEl=h('div',{class:'recv'});
+  const btns={};
+  const tap=d=>{
+    const b=h('button',{class:'tap',style:'--c:'+COLOR[d],on:{click:()=>{sale.recv[d]++;sale.hist.push(d);calc()}}},
+      vis(d,NOTE(d)?84:44),h('i',{}));
+    btns[d]=b;return b;
+  };
+  const notes=h('div',{class:'grid3'},[1000,500,100,50,20].map(tap));
+  const coins=h('div',{class:'grid4'},[10,5,2,1].map(tap));
+  const undo=h('button',{class:'btn ghost',on:{click:()=>{const d=sale.hist.pop();if(d!=null)sale.recv[d]--;calc()}}},'↩ ลบใบล่าสุด');
+  const clear=h('button',{class:'btn ghost',on:{click:()=>{sale.recv=zero();sale.hist=[];calc()}}},'ล้างใหม่');
+  const exact=h('button',{class:'btn ghost',on:{click:()=>{
+    const n=Math.floor(Number(sale.due)||0);if(n<=0)return;
+    sale.recv=greedy(n);sale.hist=[];calc();
+  }}},'จ่ายพอดี (ไม่ระบุแบงค์)');
+
+  function calc(){
+    const dueN=Math.floor(Number(sale.due)||0);
+    const total=sum(sale.recv);
+    for(const d of D){const c=sale.recv[d]||0;btns[d].querySelector('i').textContent=c?'×'+c:''}
+    recvEl.textContent=baht(total)+(dueN>0&&total>dueN?'  →  ทอน '+baht(total-dueN):'');
+    result.replaceChildren();result.style.display='none';document.body.classList.remove('nonav');document.getElementById('nav').style.display='';
+    if(total<=0)return;
+    result.style.display='';document.body.classList.add('nonav');document.getElementById('nav').style.display='none';
+    if(dueN<=0){result.append(h('div',{class:'box warn'},'ใส่ยอดจากเครื่อง POS ก่อน'));return}
+    if(total<dueN){result.append(h('div',{class:'box bad'},'ยังขาดอีก '+baht(dueN-total)));return}
+    const chg=total-dueN;
+    const p={total,recv:sale.recv};
+    if(chg===0){
+      result.append(h('div',{class:'chg'},'ลูกค้าให้พอดี — ไม่ต้องทอน'),h('div',{class:'gap'}),confirmBtn(dueN,p,zero()));
+      return;
+    }
+    const avail={};for(const d of D)avail[d]=(S.drawer[d]||0)+(sale.recv[d]||0);
+    const give=makeChange(chg,avail);
+    result.append(h('div',{class:'chg'},'ต้องทอน',h('b',{},baht(chg))));
+    if(!give){
+      result.append(h('div',{class:'box bad'},'ในลิ้นชักทอนไม่ได้พอดี ต้องไปแลกแบงค์หรือเหรียญก่อน (ถ้าทอนไปแล้วให้แก้ตัวเลขที่หน้าลิ้นชัก)'));
+      return;
+    }
+    result.append(h('div',{class:'chips'},D.filter(d=>give[d]).map(d=>h('span',{class:'chip2'},vis(d,NOTE(d)?56:36),'× '+give[d]))));
+    const low=D.filter(d=>give[d]&&avail[d]-give[d]<=2&&NOTE(d)&&d<=100);
+    if(low.length)result.append(h('div',{class:'box warn'},'หลังทอนจะเหลือ '+low.map(nm).join(', ')+' น้อยมาก'));
+    result.append(confirmBtn(dueN,p,give));
+  }
+  function confirmBtn(dueN,p,give){
+    return h('button',{class:'btn',on:{click:()=>{
+      for(const d of D)S.drawer[d]=(S.drawer[d]||0)+(p.recv[d]||0)-(give[d]||0);
+      S.log.push({t:Date.now(),date:today(),due:dueN,paid:p.total,change:p.total-dueN,recv:{...p.recv},give});
+      save();
+      sale.due='';sale.recv=zero();sale.hist=[];sale.focus=true;
+      render();toast('บันทึกแล้ว');
+    }}},'ยืนยัน — ทอนเสร็จแล้ว');
+  }
+  root.append(h('h1',{},'ทอนเงิน'),
+    h('div',{class:'card'},h('div',{class:'lbl'},'ยอดจากเครื่อง POS'),due),
+    h('div',{class:'card'},h('div',{class:'lbl'},'ลูกค้าให้มา — แตะทีละใบ'),recvEl,h('div',{class:'gap'}),notes,h('div',{class:'gap'}),coins,h('div',{class:'gap'}),
+      h('div',{class:'grid2'},undo,clear),h('div',{class:'gap'}),exact),
+    h('div',{style:'height:210px'}),result);
+  calc();
+  if(sale.focus){sale.focus=false;setTimeout(()=>{if(due.isConnected)openPad(due)},50)}
+  return root;
+}
+
+function screenDrawer(){
+  const root=h('div',{},h('h1',{},'เงินในลิ้นชักตอนนี้'));
+  if(!S.start)root.append(h('div',{class:'box warn'},'ยังไม่ได้นับเงินเช้านี้ — ไปที่แท็บ "นับเช้า"'));
+  const drawer={...S.drawer};
+  const tdy=S.log.filter(x=>x.date===today());
+  const salesSum=tdy.reduce((s,x)=>s+x.due,0);
+  const low=D.filter(d=>d<=100&&d!==1000&&(S.drawer[d]||0)<5);
+  if(S.start&&sum(S.drawer)!==undefined)root.append(h('div',{class:'card'},
+    h('div',{class:'hist'},h('span',{},'เงินตั้งต้นเช้านี้'),h('b',{},baht(S.start.total))),
+    h('div',{class:'hist'},h('span',{},'ขายเงินสดวันนี้ ('+tdy.length+' บิล)'),h('b',{},baht(salesSum))),
+    h('div',{class:'hist'},h('span',{},'ควรมีในลิ้นชัก'),h('b',{},baht(sum(S.drawer))))));
+  if(low.length)root.append(h('div',{class:'box warn'},'เหลือน้อย: '+low.map(nm).join(', ')));
+  root.append(h('div',{class:'lbl'},'ถ้านับจริงแล้วไม่ตรง ให้แก้ตัวเลขตรงนี้ได้เลย'));
+  root.append(counter(S.drawer,save));
+  if(tdy.length){
+    const chipRow=o=>{const ks=D.filter(d=>o[d]);return ks.length?h('div',{class:'chips'},ks.map(d=>h('span',{class:'chip2'},vis(d,NOTE(d)?52:34),'× '+o[d]))):h('div',{class:'lbl'},'ไม่มี')};
+    const list=h('div',{class:'card'},h('div',{class:'lbl'},'รายการวันนี้ (แตะดูรายละเอียด)'));
+    for(let i=tdy.length-1;i>=0;i--){
+      const x=tdy[i];
+      const after={...S.drawer};
+      for(let j=tdy.length-1;j>i;j--)for(const d of D)after[d]=(after[d]||0)-(tdy[j].recv[d]||0)+(tdy[j].give[d]||0);
+      const grid=h('div',{class:'bal'});
+      for(const d of D){
+        const ch=(x.recv[d]||0)-(x.give[d]||0);
+        grid.append(h('div',{class:'balc'+(ch?' chg2':'')},vis(d,NOTE(d)?44:28),h('b',{},after[d]||0),ch?h('small',{class:ch<0?'neg':'pos'},(ch>0?'+':'')+ch):null));
+      }
+      const det=h('details',{class:'tx'},
+        h('summary',{},h('span',{},timeStr(x.t),h('small',{},'ต้องจ่าย '+baht(x.due)+' · ให้มา '+baht(x.paid))),h('b',{},x.change?'ทอน '+baht(x.change):'พอดี')),
+        h('div',{class:'lbl'},'ลูกค้าให้มา'),chipRow(x.recv),
+        h('div',{class:'lbl'},'หยิบทอนออกไป'),chipRow(x.give),
+        h('div',{class:'lbl'},'ในลิ้นชักหลังรายการนี้ (ตัวเลขเล็ก = เปลี่ยนจากรายการนี้)'),grid);
+      if(i===tdy.length-1)det.append(h('div',{class:'gap'}),h('button',{class:'btn danger',on:{click:()=>{
+        if(!confirm('ยกเลิกรายการล่าสุด?'))return;
+        S.log.pop();
+        for(const d of D)S.drawer[d]=(S.drawer[d]||0)-(x.recv[d]||0)+(x.give[d]||0);
+        save();render();
+      }}},'ยกเลิกรายการนี้'));
+      list.append(det);
+    }
+    root.append(list);
+  }
+  return root;
+}
+
+function screenMorning(){
+  const root=h('div',{},h('h1',{},'นับเงินตอนเช้า'));
+  if(S.start&&S.start.date===today())root.append(h('div',{class:'box ok'},'นับเช้านี้แล้ว: '+baht(S.start.total)+' (นับใหม่ได้ ถ้านับผิด)'));
+  const c=counter(morning);
+  const btn=h('button',{class:'btn',on:{click:()=>{
+    const t=sum(morning);if(t<=0){alert('ยังไม่ได้ใส่จำนวนเงิน');return}
+    if(S.log.some(x=>x.date===today())&&!confirm('วันนี้มีรายการขายแล้ว ถ้าบันทึกจะล้างยอดลิ้นชักเป็นตามที่นับ ต้องการต่อไหม?'))return;
+    S.drawer={...morning};S.start={date:today(),t:Date.now(),total:t,counts:{...morning}};
+    S.log=S.log.filter(x=>x.date!==today());
+    save();morning=zero();tab='sale';render();toast('บันทึกเงินเช้าแล้ว '+baht(t));
+  }}},'บันทึกเป็นเงินตั้งต้น');
+  root.append(c,btn);
+  return root;
+}
+
+/* per-denomination comparison: which notes/coins are short or over */
+function diffRows(exp,got){
+  const rows=D.filter(d=>(got[d]||0)!==(exp[d]||0));
+  if(!rows.length)return null;
+  const card=h('div',{class:'card'},h('div',{class:'lbl'},'ชนิดที่ไม่ตรง'));
+  for(const d of rows){
+    const df=(got[d]||0)-(exp[d]||0);
+    card.append(h('div',{class:'row'},
+      h('div',{style:'width:60px;display:flex;justify-content:center'},vis(d,NOTE(d)?56:34)),
+      h('div',{class:'name'},nm(d),h('small',{},'ควรมี '+(exp[d]||0)+' · นับได้ '+(got[d]||0))),
+      h('b',{class:df<0?'neg':'pos'},df<0?'ขาด '+(-df):'เกิน '+df)));
+  }
+  return card;
+}
+const billsBetween=(a,b)=>{const l=S.log.filter(x=>x.t>a&&x.t<=b);return{n:l.length,sum:l.reduce((s,x)=>s+x.due,0)}};
+
+function screenCheck(){
+  const root=h('div',{},h('h1',{},'เช็กเงินระหว่างวัน'));
+  const exp=sum(S.drawer);
+  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'ที่ควรมีในลิ้นชักตอนนี้'),h('div',{class:'big'},baht(exp))));
+  const res=h('div',{});
+  const c=counter(checking,upd,{expected:S.drawer});
+  function upd(){
+    res.replaceChildren();
+    const pend=c.pending();
+    if(pend.length){res.append(h('div',{class:'box warn'},'ยังไม่ได้นับ: '+pend.map(nm).join(', ')+' (ใส่ 0 ถ้าไม่มี)'));return}
+    const got=sum(checking);if(got<=0)return;
+    const diff=got-exp;
+    res.append(h('div',{class:'box '+(diff===0?'ok':'bad')},diff===0?'ตรงพอดี ✓':diff<0?'เงินขาด '+baht(-diff):'เงินเกิน '+baht(diff)));
+    const dr=diffRows(S.drawer,checking);if(dr)res.append(dr);
+    res.append(h('button',{class:'btn',on:{click:()=>{
+      S.checks.push({t:Date.now(),date:today(),expected:exp,counted:got,diff,exp:{...S.drawer},got:{...checking}});
+      save();checking=zero();render();toast('บันทึกการเช็กแล้ว');
+    }}},'บันทึกการเช็ก'));
+    if(dr)res.append(h('div',{class:'gap'}),h('button',{class:'btn ghost',on:{click:()=>{
+      if(!confirm('ปรับลิ้นชักในแอปให้เท่ากับที่นับได้จริง?'))return;
+      S.drawer={...checking};save();checking=zero();render();toast('ปรับลิ้นชักแล้ว');
+    }}},'ปรับลิ้นชักในแอปให้ตรงที่นับ'));
+  }
+  root.append(h('div',{class:'lbl'},'นับเงินจริงในลิ้นชัก (ไม่ต้องปิดร้าน)'),c,res);
+  const tdy=S.checks.filter(x=>x.date===today());
+  if(tdy.length){
+    const hist=h('div',{class:'card'},h('div',{class:'lbl'},'การเช็กวันนี้'));
+    tdy.forEach((x,i)=>{
+      const from=i?tdy[i-1].t:(S.start&&S.start.t)||0,w=billsBetween(from,x.t);
+      hist.append(h('div',{class:'hist'},
+        h('span',{},timeStr(x.t),h('small',{},(i?'ตั้งแต่เช็กครั้งก่อน':'ตั้งแต่เปิดร้าน')+': '+w.n+' บิล · ขาย '+baht(w.sum))),
+        h('span',{class:x.diff===0?'pos':x.diff<0?'neg':'pos'},x.diff===0?'ตรง':(x.diff>0?'เกิน +':'ขาด ')+baht(Math.abs(x.diff)))));
+    });
+    root.append(hist);
+  }
+  return root;
+}
+
+function screenClose(){
+  const root=h('div',{},h('h1',{},'ปิดร้าน'));
+  const exp=sum(S.drawer);
+  const tdy=S.log.filter(x=>x.date===today());
+  const appSales=tdy.reduce((s,x)=>s+x.due,0);
+  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'ที่ควรมีในลิ้นชัก'),h('div',{class:'big'},baht(exp))));
+  const res=h('div',{}),posRes=h('div',{});
+  const pos=h('input',{type:'number',inputmode:'none',readonly:'',min:0,placeholder:'ไม่ใส่ก็ได้'});
+  pos.addEventListener('click',()=>openPad(pos));
+  pos.addEventListener('input',upPos);
+  function upPos(){
+    posRes.replaceChildren();
+    if(pos.value==='')return;
+    const d=Number(pos.value)-appSales;
+    posRes.append(h('div',{class:'box '+(d===0?'ok':'warn')},d===0?'ตรงกับในแอป ✓':d>0?'POS มากกว่าแอป '+baht(d)+' — อาจลืมกดรายการในแอป':'แอปมากกว่า POS '+baht(-d)+' — อาจกดยอดผิดหรือกดซ้ำ'));
+  }
+  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'ยอดขายเงินสดวันนี้จากเครื่อง POS (เทียบกับในแอป '+baht(appSales)+' · '+tdy.length+' บิล)'),pos,h('div',{class:'gap'}),posRes));
+  const c=counter(closing,upd,{expected:S.drawer});
+  function upd(){
+    res.replaceChildren();
+    const pend=c.pending();
+    if(pend.length){res.append(h('div',{class:'box warn'},'ยังไม่ได้นับ: '+pend.map(nm).join(', ')+' (ใส่ 0 ถ้าไม่มี)'));return}
+    const got=sum(closing);if(got<=0)return;
+    const diff=got-exp;
+    res.append(h('div',{class:'box '+(diff===0?'ok':'bad')},diff===0?'ตรงพอดี ✓':diff<0?'เงินขาด '+baht(-diff):'เงินเกิน '+baht(diff)));
+    const dr=diffRows(S.drawer,closing);if(dr)res.append(dr);
+    res.append(h('button',{class:'btn',on:{click:()=>{
+      S.days=S.days.filter(x=>x.date!==today());
+      S.days.push({date:today(),start:S.start?S.start.total:null,sales:appSales,bills:tdy.length,expected:exp,counted:got,diff,posCash:pos.value===''?null:Number(pos.value)});
+      S.drawer={...closing};save();closing=zero();render();toast('บันทึกปิดร้านแล้ว');
+    }}},'บันทึกปิดร้าน'));
+  }
+  root.append(h('div',{class:'lbl'},'นับเงินจริงในลิ้นชัก'),c,res);
+  if(S.days.length){
+    const hist=h('div',{class:'card'},h('div',{class:'lbl'},'ประวัติ'));
+    for(const d of S.days.slice().reverse().slice(0,30)){
+      const pd=d.posCash==null?null:d.posCash-d.sales;
+      hist.append(h('div',{class:'hist'},h('span',{},dateStr(d.date),h('small',{},d.bills+' บิล · ขาย '+baht(d.sales)+(pd==null?'':pd===0?' · ตรง POS':' · ต่างจาก POS '+baht(Math.abs(pd))))),
+        h('span',{class:d.diff===0?'pos':d.diff<0?'neg':'pos'},d.diff===0?'ตรง':(d.diff>0?'เกิน +':'ขาด ')+baht(Math.abs(d.diff)))));
+    }
+    root.append(hist);
+  }
+  return root;
+}
+
+/* ---------- shell ---------- */
+const TABS=[['sale','💵','ทอนเงิน',screenSale],['drawer','🗄️','ลิ้นชัก',screenDrawer],['check','🔍','เช็ก',screenCheck],['morning','🌅','นับเช้า',screenMorning],['close','🌙','ปิดร้าน',screenClose]];
+function render(){
+  closePad();
+  const app=document.getElementById('app');
+  document.body.classList.remove('nonav');document.getElementById('nav').style.display='';
+  app.replaceChildren(TABS.find(t=>t[0]===tab)[3]());
+  document.getElementById('nav').replaceChildren(...TABS.map(t=>h('button',{class:t[0]===tab?'on':'',on:{click:()=>{tab=t[0];render();window.scrollTo(0,0)}}},h('i',{},t[1]),t[2])));
+}
+function toast(msg){
+  const t=h('div',{style:'position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translateX(-50%);background:#111;color:#fff;padding:12px 20px;border-radius:24px;font-weight:600;z-index:9;box-shadow:0 4px 14px rgba(0,0,0,.3)'},msg);
+  document.body.append(t);setTimeout(()=>t.remove(),1600);
+}
+if(!S.start||S.start.date!==today()){if(!S.start)tab='morning'}
+render();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
