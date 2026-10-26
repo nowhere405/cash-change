@@ -355,6 +355,12 @@ function screenMorning(){
     save();morning=zero();tab='sale';render();toast('บันทึกเงินเช้าแล้ว '+baht(t));
   }}},'บันทึกเป็นเงินตั้งต้น');
   root.append(c,btn);
+  root.append(h('div',{style:'height:36px'}),h('button',{class:'btn ghost',style:'color:var(--bad);font-size:14px',on:{click:()=>{
+    if(!confirm('ล้างข้อมูลทั้งหมดในแอป (ลิ้นชัก รายการขาย ประวัติเช็ก และประวัติปิดร้าน)? กู้คืนไม่ได้'))return;
+    if(!confirm('ยืนยันอีกครั้ง: ลบข้อมูลทั้งหมดจริงหรือไม่?'))return;
+    S=init();save();morning=zero();closing=zero();checking=zero();sale.due='';sale.recv=zero();sale.hist=[];
+    tab='morning';render();toast('ล้างข้อมูลแล้ว');
+  }}},'ล้างข้อมูลทั้งหมด (ใช้ตอนลองเล่นเสร็จ)'));
   return root;
 }
 
