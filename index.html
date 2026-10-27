@@ -25,7 +25,7 @@ input[type=number]{width:100%;font-size:32px;font-weight:700;padding:10px 12px;b
 input:focus{outline:none;border-color:var(--main)}
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-.sheet{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;background:var(--card);border-top:3px solid var(--main);border-radius:18px 18px 0 0;padding:12px 16px;box-shadow:0 -6px 20px rgba(0,0,0,.28);z-index:5}
+.sheet{max-height:72vh;overflow-y:auto;position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;background:var(--card);border-top:3px solid var(--main);border-radius:18px 18px 0 0;padding:12px 16px;box-shadow:0 -6px 20px rgba(0,0,0,.28);z-index:5}
 .sheet .box{margin-bottom:8px}.sheet .btn{padding:12px;font-size:18px}
 .recv{font-size:26px;font-weight:800;margin-bottom:2px}
 .chg{font-size:15px;color:var(--mute);font-weight:600}.chg b{font-size:30px;color:var(--text);margin-left:6px}
@@ -128,7 +128,7 @@ S.checks=S.checks||[];
 S.exp=S.exp||[];
 const save=()=>{try{localStorage.setItem('cashapp',JSON.stringify(S))}catch(e){}};
 let tab='sale';
-const sale={due:'',recv:zero(),hist:[],focus:false};
+const sale={due:'',recv:zero(),hist:[],focus:false,alt:null};
 let morning=zero(),closing=zero(),checking=zero();
 const spend={label:'',out:zero()};
 const EXP_LABELS=['refund','ค่าน้ำมะพร้าว','ค่าแรง','อื่นๆ'];
@@ -250,7 +250,7 @@ function screenSale(){
   const notes=h('div',{class:'grid3'},[1000,500,100,50,20].map(tap));
   const coins=h('div',{class:'grid4'},[10,5,2,1].map(tap));
   const undo=h('button',{class:'btn ghost',on:{click:()=>{const d=sale.hist.pop();if(d!=null)sale.recv[d]--;calc()}}},'↩ ลบใบล่าสุด');
-  const clear=h('button',{class:'btn ghost',on:{click:()=>{sale.recv=zero();sale.hist=[];calc()}}},'ล้างใหม่');
+  const clear=h('button',{class:'btn ghost',on:{click:()=>{sale.recv=zero();sale.hist=[];sale.alt=null;calc()}}},'ล้างใหม่');
   const exact=h('button',{class:'btn ghost',on:{click:()=>{
     const n=Math.floor(Number(sale.due)||0);if(n<=0)return;
     sale.recv=greedy(n);sale.hist=[];calc();
@@ -276,20 +276,46 @@ function screenSale(){
     const give=makeChange(chg,avail);
     result.append(h('div',{class:'chg'},'ต้องทอน',h('b',{},baht(chg))));
     if(!give){
-      result.append(h('div',{class:'box bad'},'ในลิ้นชักทอนไม่ได้พอดี ต้องไปแลกแบงค์หรือเหรียญก่อน (ถ้าทอนไปแล้วให้แก้ตัวเลขที่หน้าลิ้นชัก)'));
+      result.append(h('div',{class:'box bad'},'ในลิ้นชักทอนไม่ได้พอดี ต้องไปแลกแบงค์หรือเหรียญก่อน'));
+      result.append(altSection(chg,avail,p,dueN,null));
       return;
     }
     result.append(h('div',{class:'chips'},D.filter(d=>give[d]).map(d=>h('span',{class:'chip2'},vis(d,NOTE(d)?56:36),'× '+give[d]))));
     const low=D.filter(d=>give[d]&&avail[d]-give[d]<=2&&NOTE(d)&&d<=100);
     if(low.length)result.append(h('div',{class:'box warn'},'หลังทอนจะเหลือ '+low.map(nm).join(', ')+' น้อยมาก'));
-    result.append(confirmBtn(dueN,p,give));
+    if(sale.alt)result.append(altSection(chg,avail,p,dueN,give));
+    else result.append(confirmBtn(dueN,p,give),h('div',{class:'gap'}),altSection(chg,avail,p,dueN,give));
+  }
+  function altSection(chg,avail,p,dueN,suggest){
+    const box=h('div',{});
+    if(!sale.alt){
+      box.append(h('button',{class:'btn ghost',on:{click:()=>{sale.alt=zero();calc()}}},'ทอนไม่ตรงที่แนะนำ? กรอกที่ทอนจริง'));
+      return box;
+    }
+    const st=h('div',{}),cnt=h('div',{class:'chips'});
+    const ds=D.filter(d=>(avail[d]||0)>0&&d<=chg);
+    const taps={};
+    const upd=()=>{
+      for(const d of ds)taps[d].querySelector('i').textContent=sale.alt[d]?'×'+sale.alt[d]:'';
+      const t=sum(sale.alt);st.replaceChildren();
+      if(t===0){st.append(h('div',{class:'box warn'},'แตะแบงค์/เหรียญที่ทอนไปจริง (ต้องทอน '+baht(chg)+')'));return}
+      if(t!==chg){st.append(h('div',{class:'box '+(t>chg?'bad':'warn')},'ที่ทอนจริงรวม '+baht(t)+(t<chg?' · ยังขาด '+baht(chg-t):' · เกินไป '+baht(t-chg))));return}
+      st.append(h('div',{class:'box ok'},'ครบ '+baht(chg)+' ✓'),confirmBtn(dueN,p,{...sale.alt}));
+    };
+    for(const d of ds)taps[d]=h('button',{class:'tap',style:'--c:'+COLOR[d],on:{click:()=>{if((sale.alt[d]||0)>=avail[d])return;sale.alt[d]++;upd()}}},vis(d,NOTE(d)?60:36),h('i',{}));
+    box.append(h('div',{class:'lbl'},'ทอนจริง — แตะทีละใบ'),h('div',{class:'grid4'},ds.map(d=>taps[d])),h('div',{class:'gap'}),
+      h('div',{class:'grid2'},
+        h('button',{class:'btn ghost',on:{click:()=>{sale.alt=zero();upd()}}},'ล้างที่ทอน'),
+        h('button',{class:'btn ghost',on:{click:()=>{sale.alt=null;calc()}}},'ใช้ที่แนะนำ')),
+      h('div',{class:'gap'}),st);
+    upd();return box;
   }
   function confirmBtn(dueN,p,give){
     return h('button',{class:'btn',on:{click:()=>{
       for(const d of D)S.drawer[d]=(S.drawer[d]||0)+(p.recv[d]||0)-(give[d]||0);
       S.log.push({t:Date.now(),date:today(),due:dueN,paid:p.total,change:p.total-dueN,recv:{...p.recv},give});
       save();
-      sale.due='';sale.recv=zero();sale.hist=[];sale.focus=true;
+      sale.due='';sale.recv=zero();sale.hist=[];sale.alt=null;sale.focus=true;
       render();toast('บันทึกแล้ว');
     }}},'ยืนยัน — ทอนเสร็จแล้ว');
   }
