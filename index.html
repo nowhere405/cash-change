@@ -60,6 +60,7 @@ body.nonav .sheet{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom
 .bn::before{content:'';position:absolute;left:7%;top:50%;width:26%;aspect-ratio:1;transform:translateY(-50%);border-radius:50%;border:2px solid rgba(255,255,255,.5)}
 .bn::after{content:'';position:absolute;right:6%;top:12%;bottom:12%;width:5%;border-radius:3px;background:rgba(255,255,255,.3)}
 .coin{width:var(--w);height:var(--w);border-radius:50%;background:radial-gradient(circle at 30% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c));border:3px solid rgba(255,255,255,.55);font-size:calc(var(--w)*.42)}
+html,body{overscroll-behavior-y:contain}
 button{font:inherit;color:inherit;border:0;cursor:pointer}
 .btn{width:100%;padding:16px;border-radius:14px;background:var(--main);color:var(--mainText);font-size:19px;font-weight:700}
 .btn:disabled{opacity:.35}
@@ -521,6 +522,27 @@ function toast(msg){
   const t=h('div',{style:'position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translateX(-50%);background:#111;color:#fff;padding:12px 20px;border-radius:24px;font-weight:600;z-index:9;box-shadow:0 4px 14px rgba(0,0,0,.3)'},msg);
   document.body.append(t);setTimeout(()=>t.remove(),1600);
 }
+/* pull down at top of page to reload (data is in localStorage, so it is kept) */
+(()=>{
+  const ind=h('div',{style:'position:fixed;left:50%;top:0;transform:translate(-50%,-60px);background:#111;color:#fff;padding:10px 18px;border-radius:24px;font-weight:600;z-index:9;pointer-events:none;transition:transform .15s'},'↓ ดึงลงเพื่อรีเฟรช');
+  document.body.append(ind);
+  let y0=null,dy=0;
+  const TH=90;
+  addEventListener('touchstart',e=>{y0=(window.scrollY<=0&&!padInp&&e.touches.length===1)?e.touches[0].clientY:null;dy=0},{passive:true});
+  addEventListener('touchmove',e=>{
+    if(y0==null)return;
+    dy=e.touches[0].clientY-y0;
+    if(dy<=0||window.scrollY>0){ind.style.transform='translate(-50%,-60px)';return}
+    ind.textContent=dy>=TH?'ปล่อยเพื่อรีเฟรช':'↓ ดึงลงเพื่อรีเฟรช';
+    ind.style.transform='translate(-50%,'+(Math.min(dy,TH+20)*.6-40+env0)+'px)';
+  },{passive:true});
+  const env0=16;
+  addEventListener('touchend',()=>{
+    if(y0!=null&&dy>=TH&&window.scrollY<=0){ind.textContent='กำลังรีเฟรช…';location.reload()}
+    else ind.style.transform='translate(-50%,-60px)';
+    y0=null;dy=0;
+  });
+})();
 if(!S.start||S.start.date!==today()){if(!S.start)tab='morning'}
 render();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
