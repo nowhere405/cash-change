@@ -121,13 +121,16 @@ const timeStr=ts=>new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute
 const dateStr=s=>{const[y,m,d]=s.split('-');return new Date(y,m-1,d).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'})};
 
 /* ---------- state ---------- */
-const init=()=>({drawer:zero(),start:null,log:[],days:[],checks:[]});
+const init=()=>({drawer:zero(),start:null,log:[],days:[],checks:[],exp:[]});
 let S;try{S=JSON.parse(localStorage.getItem('cashapp'))||init()}catch(e){S=init()}
 S.checks=S.checks||[];
+S.exp=S.exp||[];
 const save=()=>{try{localStorage.setItem('cashapp',JSON.stringify(S))}catch(e){}};
 let tab='sale';
 const sale={due:'',recv:zero(),hist:[],focus:false};
 let morning=zero(),closing=zero(),checking=zero();
+const spend={label:'',out:zero()};
+const EXP_LABELS=['ค่านม','ค่าน้ำมะพร้าว','ค่าแรง','อื่นๆ'];
 
 /* ---------- change calculation (bounded, fewest pieces) ---------- */
 function makeChange(amt,avail){
@@ -309,6 +312,7 @@ function screenDrawer(){
   if(S.start&&sum(S.drawer)!==undefined)root.append(h('div',{class:'card'},
     h('div',{class:'hist'},h('span',{},'เงินตั้งต้นเช้านี้'),h('b',{},baht(S.start.total))),
     h('div',{class:'hist'},h('span',{},'ขายเงินสดวันนี้ ('+tdy.length+' บิล)'),h('b',{},baht(salesSum))),
+    S.exp.some(x=>x.date===today())?h('div',{class:'hist'},h('span',{},'จ่ายออกวันนี้ (หักจากลิ้นชักแล้ว)'),h('b',{class:'neg'},'-'+baht(S.exp.filter(x=>x.date===today()).reduce((s,x)=>s+x.amount,0)))):null,
     h('div',{class:'hist'},h('span',{},'ควรมีในลิ้นชัก'),h('b',{},baht(sum(S.drawer))))));
   if(low.length)root.append(h('div',{class:'box warn'},'เหลือน้อย: '+low.map(nm).join(', ')));
   root.append(h('div',{class:'lbl'},'ถ้านับจริงแล้วไม่ตรง ให้แก้ตัวเลขตรงนี้ได้เลย'));
@@ -343,6 +347,46 @@ function screenDrawer(){
   return root;
 }
 
+function screenSpend(){
+  const root=h('div',{},h('h1',{},'เอาเงินออกจากลิ้นชัก'));
+  const res=h('div',{});
+  const labelIn=h('input',{type:'text',placeholder:'หรือพิมพ์รายการเอง',value:spend.label,style:'width:100%;height:46px;font-size:17px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text)'});
+  labelIn.addEventListener('input',()=>{spend.label=labelIn.value;upd()});
+  const quick=h('div',{class:'quick'},EXP_LABELS.map(l=>h('button',{on:{click:()=>{spend.label=l==='อื่นๆ'?'':l;labelIn.value=spend.label;upd();if(l==='อื่นๆ')labelIn.focus()}}},l)));
+  const c=counter(spend.out,upd,{hint:d=>'ในลิ้นชัก '+(S.drawer[d]||0)});
+  function upd(){
+    res.replaceChildren();
+    const t=sum(spend.out);if(t<=0)return;
+    const over=D.filter(d=>(spend.out[d]||0)>(S.drawer[d]||0));
+    if(over.length){res.append(h('div',{class:'box bad'},'ในลิ้นชักมีไม่พอ: '+over.map(nm).join(', ')));return}
+    const lbl=spend.label.trim();
+    res.append(h('div',{class:'box warn'},'จะหยิบออก '+baht(t)+(lbl?' ('+lbl+')':'')+' · เหลือในลิ้นชัก '+baht(sum(S.drawer)-t)));
+    res.append(h('button',{class:'btn',...(lbl?{}:{disabled:''}),on:{click:()=>{
+      if(!lbl)return;
+      for(const d of D)S.drawer[d]=(S.drawer[d]||0)-(spend.out[d]||0);
+      S.exp.push({t:Date.now(),date:today(),label:lbl,amount:t,out:{...spend.out}});
+      save();spend.label='';spend.out=zero();render();toast('บันทึกจ่ายออกแล้ว '+baht(t));
+    }}},lbl?'ยืนยัน — หยิบเงินออกแล้ว':'เลือกหรือพิมพ์ชื่อรายการก่อน'));
+  }
+  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายค่าอะไร'),labelIn,quick),h('div',{class:'lbl'},'หยิบแบงค์/เหรียญอะไรออกไป'),c,res);
+  const tdy=S.exp.filter(x=>x.date===today());
+  if(tdy.length){
+    const hist=h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายออกวันนี้ · รวม '+baht(tdy.reduce((s,x)=>s+x.amount,0))));
+    tdy.forEach((x,i)=>{
+      hist.append(h('div',{class:'hist'},h('span',{},x.label,h('small',{},timeStr(x.t)+' · '+D.filter(d=>x.out[d]).map(d=>d+'×'+x.out[d]).join(', '))),
+        h('span',{style:'text-align:right'},h('b',{class:'neg'},'-'+baht(x.amount)),
+          h('button',{style:'display:block;margin-left:auto;background:none;color:var(--bad);font-size:13px',on:{click:()=>{
+            if(!confirm('ยกเลิกรายการ "'+x.label+'" และคืนเงินเข้าลิ้นชัก?'))return;
+            S.exp.splice(S.exp.indexOf(x),1);
+            for(const d of D)S.drawer[d]=(S.drawer[d]||0)+(x.out[d]||0);
+            save();render();
+          }}},'ยกเลิก'))));
+    });
+    root.append(hist);
+  }
+  return root;
+}
+
 function screenMorning(){
   const root=h('div',{},h('h1',{},'นับเงินตอนเช้า'));
   if(S.start&&S.start.date===today())root.append(h('div',{class:'box ok'},'นับเช้านี้แล้ว: '+baht(S.start.total)+' (นับใหม่ได้ ถ้านับผิด)'));
@@ -352,6 +396,7 @@ function screenMorning(){
     if(S.log.some(x=>x.date===today())&&!confirm('วันนี้มีรายการขายแล้ว ถ้าบันทึกจะล้างยอดลิ้นชักเป็นตามที่นับ ต้องการต่อไหม?'))return;
     S.drawer={...morning};S.start={date:today(),t:Date.now(),total:t,counts:{...morning}};
     S.log=S.log.filter(x=>x.date!==today());
+    S.exp=S.exp.filter(x=>x.date!==today());
     save();morning=zero();tab='sale';render();toast('บันทึกเงินเช้าแล้ว '+baht(t));
   }}},'บันทึกเป็นเงินตั้งต้น');
   root.append(c,btn);
@@ -446,7 +491,7 @@ function screenClose(){
     const dr=diffRows(S.drawer,closing);if(dr)res.append(dr);
     res.append(h('button',{class:'btn',on:{click:()=>{
       S.days=S.days.filter(x=>x.date!==today());
-      S.days.push({date:today(),start:S.start?S.start.total:null,sales:appSales,bills:tdy.length,expected:exp,counted:got,diff,posCash:pos.value===''?null:Number(pos.value)});
+      S.days.push({date:today(),start:S.start?S.start.total:null,sales:appSales,bills:tdy.length,spent:S.exp.filter(x=>x.date===today()).reduce((s,x)=>s+x.amount,0),expected:exp,counted:got,diff,posCash:pos.value===''?null:Number(pos.value)});
       S.drawer={...closing};save();closing=zero();render();toast('บันทึกปิดร้านแล้ว');
     }}},'บันทึกปิดร้าน'));
   }
@@ -455,7 +500,7 @@ function screenClose(){
     const hist=h('div',{class:'card'},h('div',{class:'lbl'},'ประวัติ'));
     for(const d of S.days.slice().reverse().slice(0,30)){
       const pd=d.posCash==null?null:d.posCash-d.sales;
-      hist.append(h('div',{class:'hist'},h('span',{},dateStr(d.date),h('small',{},d.bills+' บิล · ขาย '+baht(d.sales)+(pd==null?'':pd===0?' · ตรง POS':' · ต่างจาก POS '+baht(Math.abs(pd))))),
+      hist.append(h('div',{class:'hist'},h('span',{},dateStr(d.date),h('small',{},d.bills+' บิล · ขาย '+baht(d.sales)+(d.spent?' · จ่ายออก '+baht(d.spent):'')+(pd==null?'':pd===0?' · ตรง POS':' · ต่างจาก POS '+baht(Math.abs(pd))))),
         h('span',{class:d.diff===0?'pos':d.diff<0?'neg':'pos'},d.diff===0?'ตรง':(d.diff>0?'เกิน +':'ขาด ')+baht(Math.abs(d.diff)))));
     }
     root.append(hist);
@@ -464,7 +509,7 @@ function screenClose(){
 }
 
 /* ---------- shell ---------- */
-const TABS=[['sale','💵','ทอนเงิน',screenSale],['drawer','🗄️','ลิ้นชัก',screenDrawer],['check','🔍','เช็ก',screenCheck],['morning','🌅','นับเช้า',screenMorning],['close','🌙','ปิดร้าน',screenClose]];
+const TABS=[['sale','💵','ทอนเงิน',screenSale],['drawer','🗄️','ลิ้นชัก',screenDrawer],['spend','💸','จ่ายออก',screenSpend],['check','🔍','เช็ก',screenCheck],['morning','🌅','นับเช้า',screenMorning],['close','🌙','ปิดร้าน',screenClose]];
 function render(){
   closePad();
   const app=document.getElementById('app');
