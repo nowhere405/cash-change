@@ -130,7 +130,7 @@ const save=()=>{try{localStorage.setItem('cashapp',JSON.stringify(S))}catch(e){}
 let tab='sale';
 const sale={due:'',recv:zero(),hist:[],focus:false,alt:null};
 let morning=zero(),closing=zero(),checking=zero();
-const spend={label:'',out:zero(),amt:''};
+const spend={label:'',out:zero(),back:zero(),amt:''};
 const EXP_LABELS=['refund','ค่าน้ำมะพร้าว','ค่าแรง','อื่นๆ'];
 
 /* ---------- change calculation (bounded, fewest pieces) ---------- */
@@ -380,43 +380,52 @@ function screenSpend(){
   const labelIn=h('input',{type:'text',placeholder:'หรือพิมพ์รายการเอง',value:spend.label,style:'width:100%;height:46px;font-size:17px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text)'});
   labelIn.addEventListener('input',()=>{spend.label=labelIn.value;upd()});
   const quick=h('div',{class:'quick'},EXP_LABELS.map(l=>h('button',{on:{click:()=>{spend.label=l==='อื่นๆ'?'':l;labelIn.value=spend.label;upd();if(l==='อื่นๆ')labelIn.focus()}}},l)));
-  const c=counter(spend.out,upd,{hint:d=>'ในลิ้นชัก '+(S.drawer[d]||0)});
+  const c=counter(spend.out,onOut,{hint:d=>'ในลิ้นชัก '+(S.drawer[d]||0)});
+  const cb=counter(spend.back,upd);
+  const amtN=()=>Math.floor(Number(spend.amt)||0);
+  function onOut(){
+    const n=amtN(),o=sum(spend.out);
+    Object.assign(spend.back,o>n&&n>0?greedy(o-n):zero());cb.refresh();upd();
+  }
   const amt=h('input',{type:'number',inputmode:'none',readonly:'',min:0,placeholder:'ใส่ยอด แล้วแอปจะเลือกแบงค์/เหรียญให้',value:spend.amt});
   const amtMsg=h('div',{});
   amt.addEventListener('input',()=>{
     spend.amt=amt.value;amtMsg.replaceChildren();
     const n=Math.floor(Number(amt.value)||0);
-    if(n<=0){Object.assign(spend.out,zero());c.refresh();upd();return}
+    if(n<=0){Object.assign(spend.out,zero());Object.assign(spend.back,zero());c.refresh();cb.refresh();upd();return}
     const g=makeChange(n,S.drawer);
-    if(!g){Object.assign(spend.out,zero());c.refresh();upd();amtMsg.append(h('div',{class:'box bad'},'ในลิ้นชักหยิบให้ได้ '+baht(n)+' พอดีไม่ได้ (ต้องแลกแบงค์/เหรียญก่อน หรือเลือกเองด้านล่าง)'));return}
-    Object.assign(spend.out,g);c.refresh();upd();
+    if(!g){Object.assign(spend.out,zero());Object.assign(spend.back,zero());c.refresh();cb.refresh();upd();amtMsg.append(h('div',{class:'box bad'},'ในลิ้นชักหยิบให้ได้ '+baht(n)+' พอดีไม่ได้ (ต้องแลกแบงค์/เหรียญก่อน หรือเลือกเองด้านล่าง)'));return}
+    Object.assign(spend.out,g);Object.assign(spend.back,zero());c.refresh();cb.refresh();upd();
   });
   amt.addEventListener('click',()=>openPad(amt));
   function upd(){
     res.replaceChildren();
-    const t=sum(spend.out);if(t<=0)return;
+    const o=sum(spend.out),bk=sum(spend.back),t=o-bk;if(o<=0)return;
     const over=D.filter(d=>(spend.out[d]||0)>(S.drawer[d]||0));
     if(over.length){res.append(h('div',{class:'box bad'},'ในลิ้นชักมีไม่พอ: '+over.map(nm).join(', ')));return}
+    if(t<=0){res.append(h('div',{class:'box bad'},'เงินทอนกลับ '+baht(bk)+' มากกว่าหรือเท่ากับที่หยิบออก '+baht(o)));return}
+    const n=amtN();
+    if(n>0&&t!==n){res.append(h('div',{class:'box warn'},'จ่ายสุทธิ '+baht(t)+' ไม่ตรงกับยอดที่ใส่ '+baht(n)+(t<n?' · ยังขาด ':' · เกิน ')+baht(Math.abs(n-t))));return}
     const lbl=spend.label.trim();
-    res.append(h('div',{class:'box warn'},'จะหยิบออก '+baht(t)+(lbl?' ('+lbl+')':'')+' · เหลือในลิ้นชัก '+baht(sum(S.drawer)-t)));
+    res.append(h('div',{class:'box warn'},'จ่ายสุทธิ '+baht(t)+(bk?' (หยิบออก '+baht(o)+' ได้ทอนกลับ '+baht(bk)+')':'')+(lbl?' · '+lbl:'')+' · ลิ้นชักเหลือ '+baht(sum(S.drawer)-t)));
     res.append(h('button',{class:'btn',...(lbl?{}:{disabled:''}),on:{click:()=>{
       if(!lbl)return;
-      for(const d of D)S.drawer[d]=(S.drawer[d]||0)-(spend.out[d]||0);
-      S.exp.push({t:Date.now(),date:today(),label:lbl,amount:t,out:{...spend.out}});
-      save();spend.label='';spend.amt='';spend.out=zero();render();toast('บันทึกจ่ายออกแล้ว '+baht(t));
-    }}},lbl?'ยืนยัน — หยิบเงินออกแล้ว':'เลือกหรือพิมพ์ชื่อรายการก่อน'));
+      for(const d of D)S.drawer[d]=(S.drawer[d]||0)-(spend.out[d]||0)+(spend.back[d]||0);
+      S.exp.push({t:Date.now(),date:today(),label:lbl,amount:t,out:{...spend.out},back:{...spend.back}});
+      save();spend.label='';spend.amt='';spend.out=zero();spend.back=zero();render();toast('บันทึกจ่ายออกแล้ว '+baht(t));
+    }}},lbl?'ยืนยัน — จ่ายเสร็จแล้ว':'เลือกหรือพิมพ์ชื่อรายการก่อน'));
   }
-  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายค่าอะไร'),labelIn,quick),h('div',{class:'card'},h('div',{class:'lbl'},'ยอดที่ต้องจ่ายออก'),amt,amtMsg),h('div',{class:'lbl'},'หยิบแบงค์/เหรียญอะไรออกไป (แก้เองได้)'),c,res);
+  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายค่าอะไร'),labelIn,quick),h('div',{class:'card'},h('div',{class:'lbl'},'ยอดที่ต้องจ่ายออก'),amt,amtMsg),h('div',{class:'lbl'},'หยิบแบงค์/เหรียญอะไรออกไปจ่าย (แก้เองได้ เช่น หยิบแบงค์ 100 ไปจ่ายค่า 45)'),c,h('div',{class:'lbl'},'ได้เงินทอนกลับมาใส่ลิ้นชัก (ถ้ามี)'),cb,res);
   const tdy=S.exp.filter(x=>x.date===today());
   if(tdy.length){
     const hist=h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายออกวันนี้ · รวม '+baht(tdy.reduce((s,x)=>s+x.amount,0))));
     tdy.forEach((x,i)=>{
-      hist.append(h('div',{class:'hist'},h('span',{},x.label,h('small',{},timeStr(x.t)+' · '+D.filter(d=>x.out[d]).map(d=>d+'×'+x.out[d]).join(', '))),
+      hist.append(h('div',{class:'hist'},h('span',{},x.label,h('small',{},timeStr(x.t)+' · '+D.filter(d=>x.out[d]).map(d=>d+'×'+x.out[d]).join(', ')+(x.back&&sum(x.back)?' · ทอนกลับ '+D.filter(d=>x.back[d]).map(d=>d+'×'+x.back[d]).join(', '):''))),
         h('span',{style:'text-align:right'},h('b',{class:'neg'},'-'+baht(x.amount)),
           h('button',{style:'display:block;margin-left:auto;background:none;color:var(--bad);font-size:13px',on:{click:()=>{
             if(!confirm('ยกเลิกรายการ "'+x.label+'" และคืนเงินเข้าลิ้นชัก?'))return;
             S.exp.splice(S.exp.indexOf(x),1);
-            for(const d of D)S.drawer[d]=(S.drawer[d]||0)+(x.out[d]||0);
+            for(const d of D)S.drawer[d]=Math.max(0,(S.drawer[d]||0)+(x.out[d]||0)-((x.back||{})[d]||0));
             save();render();
           }}},'ยกเลิก'))));
     });
