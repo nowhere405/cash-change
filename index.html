@@ -221,6 +221,10 @@ function closePad(){
   if(padInp)padInp.classList.remove('active');
   padInp=null;if(padEl)padEl.style.display='none';document.body.classList.remove('padopen');
 }
+/* tap anywhere outside the pad / number boxes to close the pad */
+document.addEventListener('click',e=>{
+  if(padInp&&!e.target.closest('.pad,input,.step'))closePad();
+});
 function padKey(k){
   if(!padInp)return;
   if(k==='next'){
