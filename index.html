@@ -130,7 +130,7 @@ const save=()=>{try{localStorage.setItem('cashapp',JSON.stringify(S))}catch(e){}
 let tab='sale';
 const sale={due:'',recv:zero(),hist:[],focus:false,alt:null};
 let morning=zero(),closing=zero(),checking=zero();
-const spend={label:'',out:zero()};
+const spend={label:'',out:zero(),amt:''};
 const EXP_LABELS=['refund','ค่าน้ำมะพร้าว','ค่าแรง','อื่นๆ'];
 
 /* ---------- change calculation (bounded, fewest pieces) ---------- */
@@ -381,6 +381,17 @@ function screenSpend(){
   labelIn.addEventListener('input',()=>{spend.label=labelIn.value;upd()});
   const quick=h('div',{class:'quick'},EXP_LABELS.map(l=>h('button',{on:{click:()=>{spend.label=l==='อื่นๆ'?'':l;labelIn.value=spend.label;upd();if(l==='อื่นๆ')labelIn.focus()}}},l)));
   const c=counter(spend.out,upd,{hint:d=>'ในลิ้นชัก '+(S.drawer[d]||0)});
+  const amt=h('input',{type:'number',inputmode:'none',readonly:'',min:0,placeholder:'ใส่ยอด แล้วแอปจะเลือกแบงค์/เหรียญให้',value:spend.amt});
+  const amtMsg=h('div',{});
+  amt.addEventListener('input',()=>{
+    spend.amt=amt.value;amtMsg.replaceChildren();
+    const n=Math.floor(Number(amt.value)||0);
+    if(n<=0){Object.assign(spend.out,zero());c.refresh();upd();return}
+    const g=makeChange(n,S.drawer);
+    if(!g){Object.assign(spend.out,zero());c.refresh();upd();amtMsg.append(h('div',{class:'box bad'},'ในลิ้นชักหยิบให้ได้ '+baht(n)+' พอดีไม่ได้ (ต้องแลกแบงค์/เหรียญก่อน หรือเลือกเองด้านล่าง)'));return}
+    Object.assign(spend.out,g);c.refresh();upd();
+  });
+  amt.addEventListener('click',()=>openPad(amt));
   function upd(){
     res.replaceChildren();
     const t=sum(spend.out);if(t<=0)return;
@@ -392,10 +403,10 @@ function screenSpend(){
       if(!lbl)return;
       for(const d of D)S.drawer[d]=(S.drawer[d]||0)-(spend.out[d]||0);
       S.exp.push({t:Date.now(),date:today(),label:lbl,amount:t,out:{...spend.out}});
-      save();spend.label='';spend.out=zero();render();toast('บันทึกจ่ายออกแล้ว '+baht(t));
+      save();spend.label='';spend.amt='';spend.out=zero();render();toast('บันทึกจ่ายออกแล้ว '+baht(t));
     }}},lbl?'ยืนยัน — หยิบเงินออกแล้ว':'เลือกหรือพิมพ์ชื่อรายการก่อน'));
   }
-  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายค่าอะไร'),labelIn,quick),h('div',{class:'lbl'},'หยิบแบงค์/เหรียญอะไรออกไป'),c,res);
+  root.append(h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายค่าอะไร'),labelIn,quick),h('div',{class:'card'},h('div',{class:'lbl'},'ยอดที่ต้องจ่ายออก'),amt,amtMsg),h('div',{class:'lbl'},'หยิบแบงค์/เหรียญอะไรออกไป (แก้เองได้)'),c,res);
   const tdy=S.exp.filter(x=>x.date===today());
   if(tdy.length){
     const hist=h('div',{class:'card'},h('div',{class:'lbl'},'จ่ายออกวันนี้ · รวม '+baht(tdy.reduce((s,x)=>s+x.amount,0))));
