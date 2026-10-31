@@ -151,6 +151,22 @@ function makeChange(amt,avail){
 }
 function greedy(amt){const r=zero();for(const d of D){r[d]=Math.floor(amt/d);amt-=r[d]*d}return r}
 
+/* ---------- haptic feedback ---------- */
+let hapLabel=null;
+function haptic(){
+  try{
+    if(navigator.vibrate){navigator.vibrate(15);return}
+    /* iOS Safari 17.4+: toggling a switch checkbox gives a light tap */
+    if(!hapLabel){
+      const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');i.id='hapsw';
+      hapLabel=document.createElement('label');hapLabel.htmlFor='hapsw';
+      hapLabel.style.cssText='position:fixed;left:-99px;top:-99px;opacity:0;pointer-events:none';
+      hapLabel.append(i);document.body.append(hapLabel);
+    }
+    hapLabel.click();
+  }catch(e){}
+}
+
 /* ---------- ui helpers ---------- */
 function h(tag,attrs,...kids){
   const e=document.createElement(tag);
@@ -193,8 +209,8 @@ function counter(obj,onchange,opts={}){
       h('div',{style:'width:60px;display:flex;justify-content:center'},vis(d,NOTE(d)?56:34)),
       h('div',{class:'name'},nm(d),exp?(sms[d]=h('small',{})):opts.hint?h('small',{},opts.hint(d)):null),
       h('div',{class:'step'},
-        h('button',{on:{click:()=>set((obj[d]||0)-1)}},'−'),inp,
-        h('button',{on:{click:()=>set((obj[d]||0)+1)}},'+'))));
+        h('button',{on:{click:()=>{haptic();set((obj[d]||0)-1)}}},'−'),inp,
+        h('button',{on:{click:()=>{haptic();set((obj[d]||0)+1)}}},'+'))));
   }
   for(const d of D)stat(d);
   wrap.append(h('div',{class:'total'},h('span',{},'รวม'),totalEl));
