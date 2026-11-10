@@ -232,12 +232,14 @@ function openPad(inp){
   if(!padEl){padEl=buildPad();document.body.append(padEl)}
   if(padInp)padInp.classList.remove('active');
   padInp=inp;inp.classList.add('active');padBuf='';
+  inp.blur();/* we use our own pad: don't leave the field focused or iOS shifts fixed elements */
   padEl.style.display='';document.body.classList.add('padopen');
   setTimeout(()=>inp.scrollIntoView({block:'center',behavior:'smooth'}),30);
 }
 function closePad(){
   if(padInp)padInp.classList.remove('active');
   padInp=null;if(padEl)padEl.style.display='none';document.body.classList.remove('padopen');
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
 }
 /* tap anywhere outside the pad / number boxes to close the pad */
 document.addEventListener('click',e=>{
