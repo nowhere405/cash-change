@@ -652,12 +652,14 @@ function toast(msg){
     ind.style.opacity=Math.min(1,dy/TH);
   },{passive:true});
   addEventListener('touchend',()=>{
-    if(y0!=null&&dy>=TH&&window.scrollY<=0){ind.textContent='กำลังรีเฟรช…';location.reload()}
+    if(y0!=null&&dy>=TH&&window.scrollY<=0){ind.textContent='กำลังรีเฟรช…';try{sessionStorage.setItem('keep',JSON.stringify({tab,spendMode}))}catch(e){}location.reload()}
     else ind.style.opacity=0;
     y0=null;dy=0;
   });
 })();
 if(!S.start||S.start.date!==today()){if(!S.start)tab='morning'}
+try{const k=JSON.parse(sessionStorage.getItem('keep')||'null');sessionStorage.removeItem('keep');
+  if(k){if(TABS.some(t=>t[0]===k.tab))tab=k.tab;if(k.spendMode==='swap'||k.spendMode==='out')spendMode=k.spendMode}}catch(e){}
 render();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
